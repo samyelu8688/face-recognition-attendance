@@ -1,0 +1,14 @@
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+
+# Database (optional: keep commented if you want to include it)
+# database.db
+
+# VS Code settings
+.vscode/

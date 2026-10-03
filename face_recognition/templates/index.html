@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Face Attendance & Registration</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-color: #38bdf8;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --success-color: #22c55e;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 24px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        header p {
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-size: 0.95rem;
+        }
+
+        .action-bar {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary { background: var(--accent-color); color: #0f172a; }
+        .btn-primary:hover { background: #7dd3fc; }
+
+        .btn-reg { background: var(--warning-color); color: #0f172a; }
+        .btn-reg:hover { background: #fbbf24; }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            gap: 24px;
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card-header h2 {
+            font-size: 1.2rem;
+            color: var(--accent-color);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: var(--success-color);
+        }
+
+        .status-badge.closed { color: var(--danger-color); }
+        .status-badge.reg { color: var(--warning-color); }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: currentColor;
+            border-radius: 50%;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        .video-box {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 4 / 3;
+            border: 1px solid var(--border-color);
+        }
+
+        .video-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Overlay */
+        .camera-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.94);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .camera-overlay.show { display: flex; }
+
+        .input-group {
+            margin-top: 14px;
+            display: flex;
+            gap: 8px;
+            width: 80%;
+            max-width: 320px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: #0f172a;
+            color: #fff;
+            outline: none;
+        }
+
+        .table-container {
+            overflow-y: auto;
+            max-height: 480px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            background-color: var(--card-bg);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Smart Attendance & Face Registration</h1>
+        <p>Interactive Face Direction Checks & Real-time Logging</p>
+    </header>
+
+    <div class="action-bar">
+        <button class="btn btn-primary" onclick="startAttendanceMode()">Start Attendance</button>
+        <button class="btn btn-reg" onclick="startRegistrationMode()">+ Register New Member</button>
+    </div>
+
+    <main class="container">
+        <!-- Live Video Stream -->
+        <section class="card">
+            <div class="card-header">
+                <h2>Live Camera Stream</h2>
+                <div id="status-badge" class="status-badge">
+                    <span class="status-dot"></span> <span id="status-text">Active (Attendance)</span>
+                </div>
+            </div>
+            <div class="video-box">
+                <img id="stream-img" src="/video_feed" alt="Webcam Feed" />
+                
+                <!-- Overlay -->
+                <div id="camera-overlay" class="camera-overlay">
+                    <h3 id="overlay-msg" style="color: #22c55e; margin-bottom: 8px;">Attendance Recorded!</h3>
+                    <p id="overlay-desc" style="color: var(--text-muted); font-size: 0.95rem;">Camera closed.</p>
+                    
+                    <!-- Dynamic Name Form for Registration Completion -->
+                    <div id="registration-form" style="display: none; flex-direction: column; align-items: center; width: 100%;">
+                        <div class="input-group">
+                            <input type="text" id="user-name" placeholder="Enter Full Name" />
+                            <button class="btn btn-primary" onclick="submitRegistration()">Save</button>
+                        </div>
+                    </div>
+
+                    <button id="overlay-btn" class="btn btn-primary" style="margin-top: 18px;" onclick="startAttendanceMode()">
+                        Open Camera for Next Person
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Attendance Table -->
+        <section class="card">
+            <div class="card-header">
+                <h2>Today's Attendance</h2>
+                <span id="record-count" style="font-size: 0.85rem; color: var(--text-muted);">0 entries</span>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-body">
+                        <tr>
+                            <td colspan="4" class="empty-state">Loading records...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let currentMode = 'ATTENDANCE';
+        let isCamActive = true;
+        let isRegCompleted = false;
+
+        function refreshFeed() {
+            const img = document.getElementById('stream-img');
+            img.src = '/video_feed?' + new Date().getTime();
+        }
+
+        async function startAttendanceMode() {
+            try {
+                await fetch('/start_camera', { method: 'POST' });
+                currentMode = 'ATTENDANCE';
+                isCamActive = true;
+                isRegCompleted = false;
+                
+                document.getElementById('camera-overlay').classList.remove('show');
+                document.getElementById('registration-form').style.display = 'none';
+                document.getElementById('overlay-btn').style.display = 'block';
+
+                updateStatusBadge('Active (Attendance)', 'success');
+                refreshFeed();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function startRegistrationMode() {
+            try {
+                await fetch('/start_registration', { method: 'POST' });
+                currentMode = 'REGISTRATION';
+                isCamActive = true;
+                isRegCompleted = false;
+
+                document.getElementById('camera-overlay').classList.remove('show');
+                document.getElementById('registration-form').style.display = 'none';
+                
+                updateStatusBadge('Registration Active', 'reg');
+                refreshFeed();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function updateStatusBadge(text, type) {
+            const badge = document.getElementById('status-badge');
+            const label = document.getElementById('status-text');
+            badge.className = 'status-badge ' + (type === 'closed' ? 'closed' : (type === 'reg' ? 'reg' : ''));
+            label.innerText = text;
+        }
+
+        async function checkStatus() {
+            try {
+                if (currentMode === 'ATTENDANCE') {
+                    const res = await fetch('/camera_status');
+                    const data = await res.json();
+
+                    if (!data.active && isCamActive) {
+                        isCamActive = false;
+                        updateStatusBadge('Standby (Closed)', 'closed');
+
+                        if (data.last_person) {
+                            document.getElementById('overlay-msg').innerText = `Attendance Recorded for ${data.last_person}!`;
+                        }
+                        document.getElementById('overlay-desc').innerText = 'Camera closed to save resources.';
+                        document.getElementById('registration-form').style.display = 'none';
+                        document.getElementById('overlay-btn').style.display = 'block';
+                        document.getElementById('camera-overlay').classList.add('show');
+                        fetchRecords();
+                    }
+                } else if (currentMode === 'REGISTRATION') {
+                    const res = await fetch('/registration_status');
+                    const data = await res.json();
+
+                    if (data.completed && !isRegCompleted) {
+                        isRegCompleted = true;
+                        document.getElementById('overlay-msg').innerText = 'Verification Complete!';
+                        document.getElementById('overlay-desc').innerText = 'All poses verified. Enter the member name below:';
+                        document.getElementById('registration-form').style.display = 'flex';
+                        document.getElementById('overlay-btn').style.display = 'none';
+                        document.getElementById('camera-overlay').classList.add('show');
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function submitRegistration() {
+            const nameInput = document.getElementById('user-name');
+            const name = nameInput.value.trim();
+
+            if (!name) {
+                alert('Please enter a valid name.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/complete_registration', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+
+                if (res.ok) {
+                    nameInput.value = '';
+                    alert(`Successfully registered ${name}!`);
+                    startAttendanceMode();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Failed to complete registration');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function fetchRecords() {
+            try {
+                const response = await fetch('/records');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const tbody = document.getElementById('attendance-body');
+                const recordCount = document.getElementById('record-count');
+
+                recordCount.innerText = `${data.length} entries`;
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No attendance recorded yet.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = data.map(record => `
+                    <tr>
+                        <td>${record.id}</td>
+                        <td style="font-weight: 500; color: #38bdf8;">${record.name}</td>
+                        <td>${record.date}</td>
+                        <td>${record.time}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error("Error fetching records:", err);
+            }
+        }
+
+        fetchRecords();
+        setInterval(fetchRecords, 3000);
+        setInterval(checkStatus, 500);
+    </script>
+</body>
+</html>
